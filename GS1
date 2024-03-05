@@ -1,0 +1,153 @@
+#include <windows.h> 
+#include <tchar.h>
+#include <atlimage.h>
+#include <time.h>
+
+#define WindowWidth 800
+#define WindowHeight 800
+
+HINSTANCE g_hInst;
+LPCTSTR lpszClass = L"Window Class Name";
+LPCTSTR lpszWindowName = L"Final Project";
+LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
+void CALLBACK AniType(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
+void CALLBACK IsHoldBoxDrag(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow)
+{
+    srand(time(NULL));
+    HWND hWnd;
+    MSG Message;
+    WNDCLASSEX WndClass;
+    g_hInst = hInstance;
+    WndClass.cbSize = sizeof(WndClass);
+    WndClass.style = CS_HREDRAW | CS_VREDRAW;
+    WndClass.lpfnWndProc = (WNDPROC)WndProc;
+    WndClass.cbClsExtra = 0;
+    WndClass.cbWndExtra = 0;
+    WndClass.hInstance = hInstance;
+    WndClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    WndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+    WndClass.lpszMenuName = NULL;
+    WndClass.lpszClassName = lpszClass;
+    WndClass.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+    RegisterClassEx(&WndClass);
+    hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 0, -10, 1616, 1000, NULL, (HMENU)NULL, hInstance, NULL);
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
+    while (GetMessage(&Message, 0, 0, 0)) {
+        TranslateMessage(&Message);
+        DispatchMessage(&Message);
+    }
+    return Message.wParam;
+}
+
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    PAINTSTRUCT ps;
+    HDC hdc, memdc;
+
+    static HBITMAP hBitmap;
+    static CImage img;
+    switch (uMsg) {
+    case WM_CREATE:
+        hdc = GetDC(hWnd);
+        SetTimer(hWnd, 1, 100, (TIMERPROC)AniType);//캐릭터 타이머
+        ReleaseDC(hWnd, hdc);
+        break;
+    case WM_MOUSEMOVE:
+        break;
+
+    case WM_KEYDOWN:
+        break;
+
+    case WM_PAINT:
+        hdc = BeginPaint(hWnd, &ps);
+        ReleaseDC(hWnd, hdc);
+        EndPaint(hWnd, &ps);
+        break;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    }
+    return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
+
+void CALLBACK AniType(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)//캐릭터 타이머
+{
+    HDC hdc, memdc;
+    static HBITMAP hBitmap;
+    hdc = GetDC(hWnd);
+    hBitmap = CreateCompatibleBitmap(hdc, WindowWidth, WindowHeight);
+    memdc = CreateCompatibleDC(hdc);
+    (HBITMAP)SelectObject(memdc, hBitmap);
+    //BoardAni();
+   // LoadImage_HoldBox();
+   // Attack();
+   // LoadImg_Board();
+   // DeadCheck();
+    AllDraw(memdc);
+    BitBlt(hdc, 0, 0, 1600, 1000, memdc, 0, 0, SRCCOPY);
+    InvalidateRect(hWnd, NULL, FALSE);
+    //ResetGame();
+    DeleteDC(memdc);
+    DeleteDC(hdc);
+    ReleaseDC(hWnd, hdc);
+}
+
+void AllDraw(HDC memdc) {
+    AnimationDraw(memdc);
+    DrawUI(memdc);
+    DrawStart(memdc);
+    DrawLevel(memdc);
+    DrawMoney(memdc);
+    DrawCard(memdc);
+    HoldBoxDraw(memdc);
+    DrawPlayerHPbar(memdc);
+    DrawEnemyHPbar(memdc);
+}
+
+
+void ImgLoad() {//이미지 로드 함수
+    background.img[0].Load(TEXT("Map02.png"));
+    money.MoneyImg.Load(TEXT("Money.png"));
+    Start.StartImg[0].Load(TEXT("S.png"));
+    Start.StartImg[1].Load(TEXT("S2.png"));
+    Start.StartImg[2].Load(TEXT("S3.png"));
+    img.Load(TEXT("LOSE.png"));
+
+    Level.LevelImg[0].Load(TEXT("L.png"));
+    Level.LevelImg[1].Load(TEXT("L2.png"));
+    Level.LevelImg[2].Load(TEXT("L3.png"));
+
+    Player[0].StandImg[0].Load(TEXT("Player_00(보스)/Player_00_Stand_1.png"));
+    Player[0].StandImg[1].Load(TEXT("Player_00(보스)/Player_00_Stand_2.png"));
+    b.b.Load(TEXT("Board.png"));
+}
+
+void AnimationDraw(HDC hdc) {//애니매이션 출력함수
+    int PlayerTop = 0, EnemyTop = 0;
+    background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 0, 0, 1600, 1000);
+    for (int i = 0; i < 10; i++) {
+        if (PlayerBoard[i].CharacterNum != 6) {
+            PlayerTop = PlayerBoard[i].Top;
+            if (PlayerBoard[i].Top + PlayerBoard[i].Height > PlayerBoard[i].Bottom) {
+                PlayerBoard[i].Top = PlayerBoard[i].Top - (PlayerBoard[i].Top + PlayerBoard[i].Height - PlayerBoard[i].Bottom);
+            }
+            PlayerBoard[i].SpriteImage.Draw(hdc, PlayerBoard[i].Left, PlayerBoard[i].Top, PlayerBoard[i].Width, PlayerBoard[i].Height,
+                0, 0, PlayerBoard[i].Width, PlayerBoard[i].Height);
+            PlayerBoard[i].Top = PlayerTop;
+        }
+        if (EnemyBoard[i].CharacterNum != 6) {
+            EnemyTop = EnemyBoard[i].Top;
+            if (EnemyBoard[i].Top + EnemyBoard[i].Height > EnemyBoard[i].Bottom) {
+                EnemyBoard[i].Top = EnemyBoard[i].Top - (EnemyBoard[i].Top + EnemyBoard[i].Height - EnemyBoard[i].Bottom);
+            }
+            EnemyBoard[i].SpriteImage.Draw(hdc, EnemyBoard[i].Left, EnemyBoard[i].Top, EnemyBoard[i].Width, EnemyBoard[i].Height,
+                0, 0, EnemyBoard[i].Width, EnemyBoard[i].Height);
+            EnemyBoard[i].Top = EnemyTop;
+        }
+    }
+
+}
