@@ -3,8 +3,8 @@
 #include <atlimage.h>
 #include <time.h>
 
-#define WindowWidth 750
-#define WindowHeight 750
+#define WindowWidth 773
+#define WindowHeight 780
 
 typedef struct BACKGROUND {
     CImage img[3];
@@ -19,7 +19,7 @@ LPCTSTR lpszClass = L"Window Class Name";
 LPCTSTR lpszWindowName = L"Server Project";
 
 Background background;
-//Character Player[10];
+Character Player[10];
 
 void AllDraw(HDC memdc);
 void AnimationDraw(HDC memdc);
@@ -44,7 +44,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         L"Win32 기본 창",               // 윈도우 제목
         WS_OVERLAPPEDWINDOW,            // 윈도우 스타일
         CW_USEDEFAULT, CW_USEDEFAULT,   // 윈도우 위치 (기본값)
-        CW_USEDEFAULT, CW_USEDEFAULT,   // 윈도우 크기 (기본값)
+        WindowWidth, WindowHeight,   // 윈도우 크기 (기본값)
         NULL,                           // 부모 윈도우 없음
         NULL,                           // 메뉴 없음
         hInstance,                      // 인스턴스 핸들
@@ -84,9 +84,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
         memdc = CreateCompatibleDC(hdc);
-        //AllDraw(memdc);
-       // BitBlt(hdc, 0, 0, WindowWidth, WindowHeight, memdc, 0, 0, SRCCOPY);
-       // DeleteDC(memdc);
+        AllDraw(memdc);
+        BitBlt(hdc, 0, 0, WindowWidth, WindowHeight, memdc, 0, 0, SRCCOPY);
+        DeleteDC(memdc);
         EndPaint(hWnd, &ps);
         break;
     case WM_DESTROY:
@@ -127,7 +127,7 @@ void CALLBACK AniType(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 void ImgLoad()
 {
     background.img[0].Load(TEXT("chess_board.png"));
-   // Player[0].Standlmg[0].Load(TEXT("player.png"));
+    Player[0].Standlmg[0].Load(TEXT("player.png"));
 }
 
 void AllDraw(HDC memdc)
@@ -137,7 +137,13 @@ void AllDraw(HDC memdc)
 
 void AnimationDraw(HDC hdc)
 {
+    int player_point = 0;
+
     float width = background.img[0].GetWidth();
     float height = background.img[0].GetHeight();
+    float p_width = Player[0].Standlmg[0].GetWidth();
+    float p_height = Player[0].Standlmg[0].GetHeight();
     background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 0, 0, width, height);
+
+    Player[0].Standlmg[0].Draw(hdc, 0, 0, 100, 100, 0, 0, p_width, p_height);
 }
