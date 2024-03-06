@@ -2,6 +2,9 @@
 #include <tchar.h>
 #include <atlimage.h>
 #include <time.h>
+#include <iostream>
+
+using namespace std;
 
 #define WindowWidth 773
 #define WindowHeight 780
@@ -137,13 +140,16 @@ void AllDraw(HDC memdc)
 
 void AnimationDraw(HDC hdc)
 {
-    int player_point = 0;
+    int player_point = 22;  // 오른쪽 왼쪽 조종
+    int player_point2 = 0; // 위,아래 조종
 
     float width = background.img[0].GetWidth();
     float height = background.img[0].GetHeight();
     float p_width = Player[0].Standlmg[0].GetWidth();
     float p_height = Player[0].Standlmg[0].GetHeight();
+
+    
     background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 0, 0, width, height);
 
-    Player[0].Standlmg[0].Draw(hdc, 0, 0, 100, 100, 0, 0, p_width, p_height);
+    Player[0].Standlmg[0].Draw(hdc, player_point, player_point2, 100, 100, 0, 0, p_width, p_height);
 }
