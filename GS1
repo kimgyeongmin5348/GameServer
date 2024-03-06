@@ -3,8 +3,8 @@
 #include <atlimage.h>
 #include <time.h>
 
-#define WindowWidth 800
-#define WindowHeight 800
+#define WindowWidth 750
+#define WindowHeight 750
 
 typedef struct BACKGROUND {
     CImage img[3];
@@ -19,7 +19,7 @@ LPCTSTR lpszClass = L"Window Class Name";
 LPCTSTR lpszWindowName = L"Server Project";
 
 Background background;
-Character Player[10];
+//Character Player[10];
 
 void AllDraw(HDC memdc);
 void AnimationDraw(HDC memdc);
@@ -28,35 +28,45 @@ void ImgLoad();
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
 void CALLBACK AniType(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow)
-{
-    srand(time(NULL));
-    HWND hWnd;
-    MSG Message;
-    WNDCLASSEX WndClass;
-    g_hInst = hInstance;
-    WndClass.cbSize = sizeof(WndClass);
-    WndClass.style = CS_HREDRAW | CS_VREDRAW;
-    WndClass.lpfnWndProc = (WNDPROC)WndProc;
-    WndClass.cbClsExtra = 0;
-    WndClass.cbWndExtra = 0;
-    WndClass.hInstance = hInstance;
-    WndClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    WndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-    WndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-    WndClass.lpszMenuName = NULL;
-    WndClass.lpszClassName = lpszClass;
-    WndClass.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
-    RegisterClassEx(&WndClass);
-    hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 0, -10, 1616, 1000, NULL, (HMENU)NULL, hInstance, NULL);
-    ShowWindow(hWnd, nCmdShow);
-    UpdateWindow(hWnd);
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    // 윈도우 클래스 등록
+    const wchar_t CLASS_NAME[] = L"SampleWindowClass";
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = CLASS_NAME;
+    RegisterClass(&wc);
 
-    while (GetMessage(&Message, 0, 0, 0)) {
-        TranslateMessage(&Message);
-        DispatchMessage(&Message);
+    // 윈도우 생성
+    HWND hWnd = CreateWindowEx(
+        0,                              // 추가 스타일
+        CLASS_NAME,                     // 윈도우 클래스 이름
+        L"Win32 기본 창",               // 윈도우 제목
+        WS_OVERLAPPEDWINDOW,            // 윈도우 스타일
+        CW_USEDEFAULT, CW_USEDEFAULT,   // 윈도우 위치 (기본값)
+        CW_USEDEFAULT, CW_USEDEFAULT,   // 윈도우 크기 (기본값)
+        NULL,                           // 부모 윈도우 없음
+        NULL,                           // 메뉴 없음
+        hInstance,                      // 인스턴스 핸들
+        NULL                            // 추가 인수 없음
+    );
+
+    if (hWnd == NULL) {
+        MessageBox(NULL, L"윈도우를 생성할 수 없습니다.", L"오류", MB_OK | MB_ICONERROR);
+        return 0;
     }
-    return Message.wParam;
+
+    // 윈도우 표시
+    ShowWindow(hWnd, nCmdShow);
+
+    // 메시지 루프
+    MSG msg = {};
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    return static_cast<int>(msg.wParam);
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -74,9 +84,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
         memdc = CreateCompatibleDC(hdc);
-        AllDraw(memdc);
-        BitBlt(hdc, 0, 0, WindowWidth, WindowHeight, memdc, 0, 0, SRCCOPY);
-        DeleteDC(memdc);
+        //AllDraw(memdc);
+       // BitBlt(hdc, 0, 0, WindowWidth, WindowHeight, memdc, 0, 0, SRCCOPY);
+       // DeleteDC(memdc);
         EndPaint(hWnd, &ps);
         break;
     case WM_DESTROY:
@@ -117,7 +127,7 @@ void CALLBACK AniType(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 void ImgLoad()
 {
     background.img[0].Load(TEXT("chess_board.png"));
-    Player[0].Standlmg[0].Load(TEXT("player.png"));
+   // Player[0].Standlmg[0].Load(TEXT("player.png"));
 }
 
 void AllDraw(HDC memdc)
@@ -127,5 +137,7 @@ void AllDraw(HDC memdc)
 
 void AnimationDraw(HDC hdc)
 {
-    background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 0, 0, 1600, 1000);
+    float width = background.img[0].GetWidth();
+    float height = background.img[0].GetHeight();
+    background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 0, 0, width, height);
 }
