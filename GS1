@@ -4,6 +4,7 @@
 #include <time.h>
 #include <iostream>
 
+
 using namespace std;
 
 #define WindowWidth 773
@@ -16,6 +17,9 @@ typedef struct BACKGROUND {
 typedef struct CHARACTER {
     CImage Standlmg[10];
 } Character;
+
+float player_point = 0;  // 오른쪽 왼쪽 조종
+float player_point2 = 0;  // 위,아래 조종
 
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = L"Window Class Name";
@@ -44,7 +48,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hWnd = CreateWindowEx(
         0,                              // 추가 스타일
         CLASS_NAME,                     // 윈도우 클래스 이름
-        L"Win32 기본 창",               // 윈도우 제목
+        L"GS1_2020182006_김경민",               // 윈도우 제목
         WS_OVERLAPPEDWINDOW,            // 윈도우 스타일
         CW_USEDEFAULT, CW_USEDEFAULT,   // 윈도우 위치 (기본값)
         WindowWidth, WindowHeight,   // 윈도우 크기 (기본값)
@@ -81,7 +85,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         hdc = GetDC(hWnd);
         ImgLoad();
-        SetTimer(hWnd, 1, 100, (TIMERPROC)AniType);//캐릭터 타이머
+        SetTimer(hWnd, 1, 1, (TIMERPROC)AniType);//캐릭터 타이머
         ReleaseDC(hWnd, hdc);
         break;
     case WM_PAINT:
@@ -97,13 +101,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
     case WM_KEYDOWN:
         switch (wParam) {
-        case 'w':
+        
+        case VK_UP:
+            player_point2 = player_point2 - 93;
+            if (player_point2 <= 0)
+                player_point2 = 0;
             break;
-        case 'a':
+        case VK_LEFT:
+            player_point = player_point - 93;
+            if (player_point <= 0)
+                player_point = 0;
             break;
-        case 's':
+        case VK_DOWN:
+            player_point2 = player_point2 + 93;
+            if (player_point2 >= 650)
+                player_point2 = 650;
             break;
-        case 'd':
+        case VK_RIGHT:
+            player_point = player_point + 93;   
+            if (player_point >= 650)
+                player_point = 650;
+            break;
+        case 'q':
+        case 'Q':
+            exit(0);
             break;
         }
     default:
@@ -140,16 +161,14 @@ void AllDraw(HDC memdc)
 
 void AnimationDraw(HDC hdc)
 {
-    int player_point = 22;  // 오른쪽 왼쪽 조종
-    int player_point2 = 0; // 위,아래 조종
 
-    float width = background.img[0].GetWidth();
-    float height = background.img[0].GetHeight();
+    float width = background.img[0].GetWidth()-20;
+    float height = background.img[0].GetHeight()-20;
     float p_width = Player[0].Standlmg[0].GetWidth();
     float p_height = Player[0].Standlmg[0].GetHeight();
 
     
-    background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 0, 0, width, height);
+    background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 20, 20, width, height);
 
     Player[0].Standlmg[0].Draw(hdc, player_point, player_point2, 100, 100, 0, 0, p_width, p_height);
 }
