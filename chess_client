@@ -1,0 +1,213 @@
+#include <windows.h> 
+#include <tchar.h>
+#include <atlimage.h>
+#include <time.h>
+#include <iostream>
+#include <WS2tcpip.h>
+
+
+using namespace std;
+#pragma comment (lib,"WS2_32.LIB")
+
+SOCKET s_socket;
+const short SERVER_PORT = 4000;
+const int BUFSIZE = 256;
+
+#define WindowWidth 773
+#define WindowHeight 780
+
+typedef struct BACKGROUND {
+    CImage img[3];
+} Background;
+
+typedef struct CHARACTER {
+    CImage Standlmg[10];
+} Character;
+
+enum direction {
+    LEFT,
+    RIGHT,
+    UP,
+    DOWN
+};
+
+float player_point = 0;  // 오른쪽 왼쪽 조종
+float player_point2 = 0;  // 위,아래 조종
+
+HINSTANCE g_hInst;
+LPCTSTR lpszClass = L"Window Class Name";
+LPCTSTR lpszWindowName = L"Server Project";
+
+Background background;
+Character Player[10];
+
+void AllDraw(HDC memdc);
+void AnimationDraw(HDC memdc);
+void ImgLoad();
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
+void CALLBACK AniType(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    // 윈도우 클래스 등록
+    const wchar_t CLASS_NAME[] = L"SampleWindowClass";
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = CLASS_NAME;
+    RegisterClass(&wc);
+
+    // 윈도우 생성
+    HWND hWnd = CreateWindowEx(
+        0,                              // 추가 스타일
+        CLASS_NAME,                     // 윈도우 클래스 이름
+        L"GS1_2020182006_김경민",               // 윈도우 제목
+        WS_OVERLAPPEDWINDOW,            // 윈도우 스타일
+        CW_USEDEFAULT, CW_USEDEFAULT,   // 윈도우 위치 (기본값)
+        WindowWidth, WindowHeight,   // 윈도우 크기 (기본값)
+        NULL,                           // 부모 윈도우 없음
+        NULL,                           // 메뉴 없음
+        hInstance,                      // 인스턴스 핸들
+        NULL                            // 추가 인수 없음
+    );
+
+    if (hWnd == NULL) {
+        MessageBox(NULL, L"윈도우를 생성할 수 없습니다.", L"오류", MB_OK | MB_ICONERROR);
+        return 0;
+    }
+
+    // 윈도우 표시
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
+
+    char SERVER_ADDR[BUFSIZE];
+    cout << "IP주소를 입력하세요: ";
+    cin >> SERVER_ADDR;
+
+    wcout.imbue(locale("korean"));
+    WSADATA WSAData;
+    WSAStartup(MAKEWORD(2, 0), &WSAData);
+    s_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+    SOCKADDR_IN server_addr;
+    ZeroMemory(&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(SERVER_PORT);
+    inet_pton(AF_INET, SERVER_ADDR, &server_addr.sin_addr);
+    connect(s_socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
+
+    // 메시지 루프
+    MSG msg = {};
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    return static_cast<int>(msg.wParam);
+}
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+
+    char direction_buf[1];
+
+    PAINTSTRUCT ps;
+    HDC hdc, memdc;
+
+    switch (uMsg) {
+    case WM_CREATE:
+        hdc = GetDC(hWnd);
+        ImgLoad();
+        SetTimer(hWnd, 1, 1, (TIMERPROC)AniType);  //캐릭터 타이머
+        ReleaseDC(hWnd, hdc);
+        break;
+    case WM_PAINT:
+        hdc = BeginPaint(hWnd, &ps);
+        memdc = CreateCompatibleDC(hdc);
+        AllDraw(memdc);
+        BitBlt(hdc, 0, 0, WindowWidth, WindowHeight, memdc, 0, 0, SRCCOPY);
+        DeleteDC(memdc);
+        EndPaint(hWnd, &ps);
+        break;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    case WM_KEYDOWN:
+        switch (wParam) {
+
+        
+        case VK_LEFT:
+            direction_buf[0] = direction::LEFT;
+            player_point = player_point - 93;
+            if (player_point <= 0)
+                player_point = 0;
+            break;
+        case VK_RIGHT:
+            direction_buf[0] = direction::RIGHT;
+            player_point = player_point + 93;
+            if (player_point >= 650)
+                player_point = 650;
+            break;
+        case VK_UP:
+            direction_buf[0] = direction::UP;
+            player_point2 = player_point2 - 93;
+            if (player_point2 <= 0)
+                player_point2 = 0;
+            break;
+        case VK_DOWN:
+            direction_buf[0] = direction::DOWN;
+            player_point2 = player_point2 + 93;
+            if (player_point2 >= 650)
+                player_point2 = 650;
+            break;
+        
+        case 'q':
+        case 'Q':
+            exit(0);
+            break;
+        }
+        InvalidateRect(hWnd, NULL, TRUE);
+    default:
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    }
+    return 0;
+}
+
+void CALLBACK AniType(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
+{
+    HDC hdc, memdc;
+    static HBITMAP hBitmap;
+    hdc = GetDC(hWnd);
+    hBitmap = CreateCompatibleBitmap(hdc, WindowWidth, WindowHeight);
+    memdc = CreateCompatibleDC(hdc);
+    SelectObject(memdc, hBitmap);
+    AllDraw(memdc);
+    BitBlt(hdc, 0, 0, WindowWidth, WindowHeight, memdc, 0, 0, SRCCOPY);
+    DeleteObject(hBitmap);
+    DeleteDC(memdc);
+    ReleaseDC(hWnd, hdc);
+}
+
+void ImgLoad()
+{
+    background.img[0].Load(TEXT("chess_board.png"));
+    Player[0].Standlmg[0].Load(TEXT("player.png"));
+}
+
+void AllDraw(HDC memdc)
+{
+    AnimationDraw(memdc);
+}
+
+void AnimationDraw(HDC hdc)
+{
+
+    float width = background.img[0].GetWidth() - 20;
+    float height = background.img[0].GetHeight() - 20;
+    float p_width = Player[0].Standlmg[0].GetWidth();
+    float p_height = Player[0].Standlmg[0].GetHeight();
+
+
+    background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 20, 20, width, height);
+
+    Player[0].Standlmg[0].Draw(hdc, player_point, player_point2, 100, 100, 0, 0, p_width, p_height);
+}
