@@ -29,11 +29,11 @@ int main() {
 	server_a.sin_family = AF_INET;
 	server_a.sin_port = htons(PORT);
 	server_a.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
-	
+
 	bind(server_s, reinterpret_cast<sockaddr*> (&server_a), sizeof(server_a));
-	listen(server_s,SOMAXCONN);
+	listen(server_s, SOMAXCONN);
 	int addr_size = sizeof(server_a);
-	SOCKET client_s = WSAAccept(server_s, reinterpret_cast<sockaddr*> (&server_a), &addr_size, nullptr,0);
+	SOCKET client_s = WSAAccept(server_s, reinterpret_cast<sockaddr*> (&server_a), &addr_size, nullptr, 0);
 
 
 	while (true) {
@@ -55,6 +55,10 @@ int main() {
 			std::cout << buf[i];
 		}
 		std::cout << '\n';
+
+		wsabuf[0].len = recv_size;
+		DWORD sent_size;
+		WSASend(client_s, wsabuf, 1, &sent_size, 0, nullptr, nullptr);
 	}
 	closesocket(server_s);
 	closesocket(client_s);
