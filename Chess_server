@@ -1,0 +1,122 @@
+#include <iostream>
+#include <WS2tcpip.h>
+
+using namespace std;
+#pragma comment(lib,"WS2_32.LIB")
+const short SERVER_PORT = 4000;
+const int BUFSIZE = 256;
+
+
+SOCKET s_socket;
+SOCKET c_socket;
+
+char command[BUFSIZE] = {};
+char coordinate[BUFSIZE] = {};
+
+DWORD sent_byte;
+DWORD recv_byte;
+DWORD recv_flag = 0;
+
+WSABUF in_buf;
+WSABUF out_buf;
+
+float player_point = 0;  // 오른쪽 왼쪽 조종
+float player_point2 = 0;  // 위,아래 조종
+
+enum direction {
+	LEFT,
+	RIGHT,
+	UP,
+	DOWN
+};
+
+void MovePalyer(int keyInput);
+
+int main()
+{
+	wcout.imbue(locale("korean"));
+	WSADATA WSAData;
+	WSAStartup(MAKEWORD(2, 0), &WSAData);
+	int ret = s_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+	if (ret == INVALID_SOCKET) {
+		cout << "socket() error" << endl;
+	}
+	SOCKADDR_IN server_addr;
+	ZeroMemory(&server_addr, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(SERVER_PORT);
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	ret = bind(s_socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
+	if (ret == SOCKET_ERROR) {
+		cout << "bind() error" << endl;
+	}
+
+	ret = listen(s_socket, SOMAXCONN);
+	if (ret == SOCKET_ERROR) {
+		cout << "listen() error" << endl;
+	}
+
+	INT addr_size = sizeof(server_addr);
+	c_socket = WSAAccept(s_socket, reinterpret_cast<sockaddr*>(&server_addr), &addr_size, 0, 0);
+	if (c_socket == SOCKET_ERROR) {
+		cout << "accept() error" << endl;
+	}
+
+	while (true) {
+
+		in_buf.buf = command;
+		in_buf.len = BUFSIZE;
+		ret = WSARecv(c_socket, &in_buf, 1, &recv_byte, &recv_flag, 0, 0);
+		if (ret == SOCKET_ERROR) {
+			cout << "Recv() error" << endl;
+			break;
+		}
+
+		MovePalyer(in_buf.buf[0]);
+
+		out_buf.buf = coordinate;
+		out_buf.len = static_cast<ULONG>(strlen(coordinate)) + 1;
+
+
+		ret = WSASend(c_socket, &out_buf, 1, &sent_byte, 0, 0, 0);
+		if (ret == SOCKET_ERROR) {
+			cout << "send() error" << endl;
+			break;
+		}
+	}
+	closesocket(c_socket);
+	closesocket(s_socket);
+
+	WSACleanup();
+}
+
+void MovePalyer(direction dir)
+{
+	switch (dir) {
+	case direction::LEFT:
+		player_point = player_point - 93;
+		if (player_point <= 0)
+			player_point = 0;
+		break;
+	case direction::RIGHT:
+		player_point = player_point + 93;
+		if (player_point >= 650)
+			player_point = 650;
+		break;
+	case direction::UP:
+		player_point2 = player_point2 - 93;
+		if (player_point2 <= 0)
+			player_point2 = 0;
+		break;
+	case direction::DOWN:
+		player_point2 = player_point2 + 93;
+		if (player_point2 >= 650)
+			player_point2 = 650;
+		break;
+
+		default:
+
+
+	}
+}
