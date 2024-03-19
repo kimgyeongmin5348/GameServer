@@ -10,7 +10,7 @@ using namespace std;
 #pragma comment (lib,"WS2_32.LIB")
 
 SOCKET s_socket;
-const short SERVER_PORT = 4000;
+const short PORT = 4000;
 const int BUFSIZE = 256;
 
 #define WindowWidth 773
@@ -87,13 +87,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     wcout.imbue(locale("korean"));
     WSADATA WSAData;
     WSAStartup(MAKEWORD(2, 0), &WSAData);
-    s_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
-    SOCKADDR_IN server_addr;
-    ZeroMemory(&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
-    inet_pton(AF_INET, SERVER_ADDR, &server_addr.sin_addr);
-    connect(s_socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
+    SOCKET server_s = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, 0);
+    SOCKADDR_IN server_a;
+    server_a.sin_family = AF_INET;
+    server_a.sin_port = htons(PORT);
+    inet_pton(AF_INET, SERVER_ADDR, &server_a.sin_addr);
+    connect(server_s, reinterpret_cast<sockaddr*>(&server_a), sizeof(server_a));
 
     // 메시지 루프
     MSG msg = {};
@@ -134,7 +133,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:
         switch (wParam) {
 
-        
+
         case VK_LEFT:
             direction_buf[0] = direction::LEFT;
             player_point = player_point - 93;
@@ -159,7 +158,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (player_point2 >= 650)
                 player_point2 = 650;
             break;
-        
+
         case 'q':
         case 'Q':
             exit(0);
