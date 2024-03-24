@@ -81,15 +81,14 @@ void print_error(const char* msg, int err_no) {
 
 void CALLBACK send_callback(DWORD err, DWORD sent_size, LPWSAOVERLAPPED pover, DWORD recv_flag) {
 	if (0 != err) {
-		int err_no = WSAGetLastError();
-		if(WSA_IO_PENDING)
 		print_error("WSASend", WSAGetLastError());
 	}
+	g_players[g_session_map[pover]].do_recv();
 }
 
 
 void CALLBACK recv_callback(DWORD err, DWORD recv_size, LPWSAOVERLAPPED pover, DWORD recv_flag) {
-	
+
 	if (0 != err) {
 		print_error("WSARecv", WSAGetLastError());
 	}
@@ -122,7 +121,7 @@ int main() {
 	listen(server_s, SOMAXCONN);
 	int addr_size = sizeof(server_a);
 	int id = 0;
-	
+
 
 
 	while (false == b_shutdown) {
