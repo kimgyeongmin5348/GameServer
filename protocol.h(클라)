@@ -1,0 +1,61 @@
+#pragma once
+
+#define SC_ACCEPT_PACKET 1
+#define SC_MOVETO_PACKET 2
+#define SC_LOGOUT_PACKET 3
+
+#define CS_LOGIN_PACKET 1
+#define CS_INPUT_PACKET 2
+#define CS_LOGOUT_PACKET 3
+
+struct Player {
+	bool isExist = false;
+	short x_pos;
+	short y_pos;
+	int num;
+};
+
+
+// 서버
+struct sc_accept {
+	char size = sizeof(sc_accept);
+	char type = SC_ACCEPT_PACKET;
+	int client_id;
+	short x_pos;
+	short y_pos;
+	int client_num;
+};
+
+struct sc_moveto {
+	char size = sizeof(sc_moveto);
+	char type = SC_MOVETO_PACKET;
+	int client_id;
+	short x_pos;
+	short y_pos;
+	int client_num;
+};
+
+struct sc_logout {
+	char size = sizeof(sc_logout);
+	char type = SC_LOGOUT_PACKET;
+	int client_id;
+};
+
+
+//클라
+struct cs_login {
+	char size = sizeof(cs_login);
+	char type = CS_LOGIN_PACKET;
+
+};
+
+struct cs_input {
+	char size = sizeof(cs_input);
+	char type = CS_INPUT_PACKET;
+	int direction;
+};
+
+struct cs_logout {
+	char size = sizeof(cs_logout);
+	char type = CS_LOGOUT_PACKET;
+};
