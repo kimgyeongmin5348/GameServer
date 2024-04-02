@@ -4,17 +4,51 @@
 #include <time.h>
 #include <iostream>
 #include <WS2tcpip.h>
+#include <unordered_map>
+#include "protocol.h"
 
+#ifdef UNICODE
+#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
+#else
+#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
+#endif
 
 using namespace std;
 #pragma comment (lib,"WS2_32.LIB")
 
-SOCKET s_socket;
-const short PORT = 4000;
+cs_login CS_LOGIN;
+cs_input CS_INPUT;
+cs_logout CS_LOGOUT;
+sc_accept SC_ACCEPy;
+sc_moveto SC_MOVETO;
+sc_logout SC_LOGOUT;
+
+
+const short SERVER_PORT = 4000;
 const int BUFSIZE = 256;
+
+unordered_map<int, Player> players;
 
 #define WindowWidth 773
 #define WindowHeight 780
+
+int x_pos = 0;
+int y_pos = 0;
+int num;
+char direction_buf[1];
+
+WSAOVERLAPPED s_over;
+WSAOVERLAPPED r_over;
+SOCKET s_socket;
+WSABUF s_wsabuf[1];
+WSABUF r_wsabuf[1];
+char s_buf[BUFSIZE];
+char r_buf[BUFSIZE];
+int id;
+
+bool isClick = false;
+
+
 
 typedef struct BACKGROUND {
     CImage img[3];
@@ -31,8 +65,15 @@ enum direction {
     DOWN
 };
 
-float player_point = 0;  // 오른쪽 왼쪽 조종
-float player_point2 = 0;  // 위,아래 조종
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+void do_send_login();
+void do_send_input();
+void do_send_logout();
+void do_recv();
+void CALLBACK recv_callback(DWORD err, DWORD num_bytes, LPWSAOVERLAPPED recv_over, DWORD flags);
+
+
+
 
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = L"Window Class Name";
@@ -86,13 +127,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     wcout.imbue(locale("korean"));
     WSADATA WSAData;
-    WSAStartup(MAKEWORD(2, 0), &WSAData);
-    SOCKET server_s = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, 0);
+    WSAStartup(MAKEWORD(2, 2), &WSAData);
+    SOCKET server_s = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
     SOCKADDR_IN server_a;
+    ZeroMemory(&server_a, sizeof(server_a));
     server_a.sin_family = AF_INET;
-    server_a.sin_port = htons(PORT);
+    server_a.sin_port = htons(SERVER_PORT);
     inet_pton(AF_INET, SERVER_ADDR, &server_a.sin_addr);
     connect(server_s, reinterpret_cast<sockaddr*>(&server_a), sizeof(server_a));
+    do_send_login();
+    do_recv();
 
     // 메시지 루프
     MSG msg = {};
@@ -136,40 +180,110 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         case VK_LEFT:
             direction_buf[0] = direction::LEFT;
-            player_point = player_point - 93;
-            if (player_point <= 0)
-                player_point = 0;
             break;
         case VK_RIGHT:
             direction_buf[0] = direction::RIGHT;
-            player_point = player_point + 93;
-            if (player_point >= 650)
-                player_point = 650;
             break;
         case VK_UP:
             direction_buf[0] = direction::UP;
-            player_point2 = player_point2 - 93;
-            if (player_point2 <= 0)
-                player_point2 = 0;
             break;
         case VK_DOWN:
             direction_buf[0] = direction::DOWN;
-            player_point2 = player_point2 + 93;
-            if (player_point2 >= 650)
-                player_point2 = 650;
             break;
 
-        case 'q':
-        case 'Q':
-            exit(0);
+        default:
             break;
         }
         InvalidateRect(hWnd, NULL, TRUE);
+    case WM_CLOSE:
+        do_send_logout();
+        PostQuitMessage(0);
+        break;
     default:
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
     return 0;
 }
+
+void do_send_login() {
+    CS_LOGIN.size = sizeof(cs_login);
+    CS_LOGIN.type = CS_LOGIN_PACKET;
+
+    s_wsabuf[0].buf = reinterpret_cast<char*>(&CS_LOGIN);
+    s_wsabuf[0].len = CS_LOGIN.size;
+    memset(&s_over, 0, sizeof(s_over));
+    WSASend(s_socket, s_wsabuf, 1, 0, 0, &s_over, NULL);
+}
+
+void do_send_input() {
+    CS_INPUT.size = sizeof(cs_input);
+    CS_INPUT.type = CS_INPUT_PACKET;
+    CS_INPUT.direction = static_cast<int>(direction_buf[0]);
+
+    s_wsabuf[0].buf = reinterpret_cast<char*>(&CS_INPUT);
+    s_wsabuf[0].len = CS_INPUT.size;
+    memset(&s_over, 0, sizeof(s_over));
+    cout << "type of packet : " << CS_INPUT.type << "where" << CS_INPUT.direction << '\n';
+    WSASend(s_socket, s_wsabuf, 1, 0, 0, &s_over, NULL);
+}
+
+void do_send_logout() {
+    CS_LOGOUT.size = sizeof(cs_logout);
+    CS_LOGOUT.type = CS_LOGOUT_PACKET;
+    
+    s_wsabuf[0].buf = reinterpret_cast<char*>(&CS_LOGOUT);
+    s_wsabuf[0].len = CS_LOGOUT.size;
+    memset(&r_over, 0, sizeof(s_over));
+    WSASend(s_socket, r_wsabuf, 1, 0, 0, &s_over, NULL);
+}
+
+void do_recv() {
+    r_wsabuf[0].buf = r_buf;
+    r_wsabuf[0].len = BUFSIZE;
+    DWORD recv_flag = 0;
+    memset(&r_over, 0, sizeof(r_over));
+    WSARecv(s_socket, r_wsabuf, 1, 0, &recv_flag, &r_over, recv_callback);
+}
+
+void CALLBACK recv_callback(DWORD err, DWORD num_bytes, LPWSAOVERLAPPED recv_over, DWORD flags) {
+    char* p = r_buf;
+    cout << (int)p[0] << " " << (int)p[1] << '\n';
+    while (p < r_buf + num_bytes) {
+        char packet_size = p[0];
+        char packet_type = p[1];
+        //서버에서 어떤 데이터가 넘어오는지 확인
+        switch (packet_type) {
+        case SC_ACCEPT_PACKET:
+            id = reinterpret_cast<sc_accept*>(p)->client_id;
+            players[id].x_pos = reinterpret_cast<sc_accept*>(p)->x_pos;
+            players[id].y_pos = reinterpret_cast<sc_accept*>(p)->y_pos;
+            players[id].x_pos += 93;
+            players[id].y_pos += 93;
+            num = reinterpret_cast<sc_accept*>(p)->client_num;
+            for (int i = 1; i <= num; ++i) {
+                players[i].isExist = true;
+            }
+            break;
+        case SC_MOVETO_PACKET:
+            id = reinterpret_cast<sc_moveto*>(p)->client_id;
+            players[id].x_pos = reinterpret_cast<sc_moveto*>(p)->x_pos;
+            players[id].y_pos = reinterpret_cast<sc_moveto*>(p)->y_pos;
+            players[id].x_pos *= 25;
+            players[id].y_pos *= 25;
+            num = reinterpret_cast<sc_accept*>(p)->client_num;
+            break;
+        case SC_LOGOUT_PACKET:
+            players.erase(reinterpret_cast<sc_logout*>(p)->client_id);
+            break;
+        }
+        p += packet_size;
+    }
+    do_recv();
+}
+
+
+
+
 
 void CALLBACK AniType(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 {
@@ -208,5 +322,6 @@ void AnimationDraw(HDC hdc)
 
     background.img[0].Draw(hdc, 0, 0, WindowWidth, WindowHeight, 20, 20, width, height);
 
-    Player[0].Standlmg[0].Draw(hdc, player_point, player_point2, 100, 100, 0, 0, p_width, p_height);
+    Player[0].Standlmg[0].Draw(hdc, x_pos, y_pos, 100, 100, 0, 0, p_width, p_height);
 }
+
